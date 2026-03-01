@@ -1,0 +1,4 @@
+com\shopscale\product\repository\ProductRepository.class
+com\shopscale\product\model\Product.class
+com\shopscale\product\ProductServiceApplication.class
+com\shopscale\product\controller\ProductController.class
