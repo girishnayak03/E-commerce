@@ -1,0 +1,4 @@
+com\shopscale\apigateway\ApiGatewayApplication.class
+com\shopscale\apigateway\filter\AuthenticationFilter.class
+com\shopscale\apigateway\config\RateLimiterConfig.class
+com\shopscale\apigateway\util\JwtUtil.class

@@ -1,0 +1,6 @@
+com\shopscale\order\config\RestTemplateConfig.class
+com\shopscale\order\repository\OrderRepository.class
+com\shopscale\order\model\OrderPlacedEvent.class
+com\shopscale\order\OrderServiceApplication.class
+com\shopscale\order\model\Order.class
+com\shopscale\order\controller\OrderController.class

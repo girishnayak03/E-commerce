@@ -56,6 +56,13 @@ public class OrderController {
                 .body("Product Service is currently down. Fallback message: Order could not be placed because we could not verify the product. Please try again later.");
     }
 
+    @GetMapping("/track/{orderNumber}")
+    public ResponseEntity<Order> trackOrder(@PathVariable String orderNumber) {
+        return orderRepository.findByOrderNumber(orderNumber)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
         return orderRepository.findById(id)

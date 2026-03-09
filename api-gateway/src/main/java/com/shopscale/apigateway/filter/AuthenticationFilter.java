@@ -26,7 +26,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
 
         // Allow public endpoints
-        if (request.getURI().getPath().startsWith("/api/auth/")) {
+        if (request.getURI().getPath().startsWith("/api/auth/") || 
+            request.getURI().getPath().startsWith("/api/orders/track/")) {
             return chain.filter(exchange);
         }
 

@@ -1,0 +1,5 @@
+com\shopscale\inventory\model\OrderPlacedEvent.class
+com\shopscale\inventory\service\InventoryService.class
+com\shopscale\inventory\model\Inventory.class
+com\shopscale\inventory\InventoryApplication.class
+com\shopscale\inventory\repository\InventoryRepository.class
