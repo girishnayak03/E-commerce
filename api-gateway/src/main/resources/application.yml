@@ -34,6 +34,10 @@ spring:
           uri: lb://checkout-service
           predicates:
             - Path=/api/checkout/**
+        - id: customer-service
+          uri: lb://CUSTOMER-SERVICE
+          predicates:
+            - Path=/api/customers/**
         - id: auth-service
           uri: lb://api-gateway
           predicates:

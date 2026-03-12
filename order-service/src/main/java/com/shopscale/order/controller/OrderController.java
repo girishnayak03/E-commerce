@@ -43,6 +43,26 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid product ID.");
         }
 
+        // Calling customer service to verify customer info
+        if (order.getCustomerId() != null) {
+            String customerUrl = "http://CUSTOMER-SERVICE/api/customers/" + order.getCustomerId();
+            try {
+                ResponseEntity<String> customerResponse = restTemplate.getForEntity(customerUrl, String.class);
+                if (!customerResponse.getStatusCode().is2xxSuccessful()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid customer ID.");
+                }
+            } catch (Exception e) {
+                // If service is down, we might want to continue or fail. 
+                // For now, let's keep it tight.
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Customer Service is currently down.");
+            }
+        }
+
+        if (order.getOrderNumber() == null || order.getOrderNumber().isEmpty()) {
+            order.setOrderNumber(java.util.UUID.randomUUID().toString());
+        }
+
+        order.setOrderStatus("PENDING");
         Order savedOrder = orderRepository.save(order);
         OrderPlacedEvent event = new OrderPlacedEvent(savedOrder.getId(), savedOrder.getOrderNumber(),
                 savedOrder.getProductId(), savedOrder.getQuantity(), savedOrder.getTotalPrice());

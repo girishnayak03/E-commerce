@@ -1,4 +1,5 @@
 com\shopscale\review\ReviewServiceApplication.class
+com\shopscale\review\config\RestTemplateConfig.class
 com\shopscale\review\model\Review.class
 com\shopscale\review\controller\ReviewController.class
 com\shopscale\review\repository\ReviewRepository.class

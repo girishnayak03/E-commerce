@@ -11,15 +11,17 @@ public class Product {
     private String id;
     private String name;
     private String description;
+    private String category;
     private BigDecimal price;
 
     public Product() {
     }
 
-    public Product(String id, String name, String description, BigDecimal price) {
+    public Product(String id, String name, String description, String category, BigDecimal price) {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.category = category;
         this.price = price;
     }
 
@@ -53,5 +55,13 @@ public class Product {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

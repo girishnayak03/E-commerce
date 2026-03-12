@@ -2,3 +2,4 @@ C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\api-gateway\src\main\ja
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\api-gateway\src\main\java\com\shopscale\apigateway\ApiGatewayApplication.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\api-gateway\src\main\java\com\shopscale\apigateway\filter\AuthenticationFilter.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\api-gateway\src\main\java\com\shopscale\apigateway\util\JwtUtil.java
+C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\api-gateway\src\main\java\com\shopscale\apigateway\controller\AuthController.java

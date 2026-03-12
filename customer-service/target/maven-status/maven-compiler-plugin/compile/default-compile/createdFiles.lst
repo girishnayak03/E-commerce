@@ -1,0 +1,5 @@
+com\shopscale\customer\model\Customer.class
+com\shopscale\customer\repository\CustomerRepository.class
+com\shopscale\customer\controller\CustomerController.class
+com\shopscale\customer\CustomerApplication.class
+com\shopscale\customer\config\DataLoader.class

@@ -165,6 +165,10 @@ function App() {
   // Review & Product Detail States
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '', address: '' });
+  const [availableCategories, setAvailableCategories] = useState(['All', 'Electronics', 'Wearables', 'Fashion', 'Gaming', 'Furniture']);
   const [productReviews, setProductReviews] = useState([]);
   const [newReviewComment, setNewReviewComment] = useState('');
   const [newReviewRating, setNewReviewRating] = useState(5);
@@ -192,11 +196,31 @@ function App() {
         if (res.ok) {
           const data = await res.json();
           setToken(data.token);
-          setUser({ name: data.email.split('@')[0], email: data.email });
+          const userData = { name: data.email.split('@')[0], email: data.email };
+          
+          // Try to fetch full customer profile from customer-service
+          try {
+            const customerRes = await fetch(`/api/customers/email/${data.email}`, {
+              headers: { 'Authorization': `Bearer ${data.token}` }
+            });
+            if (customerRes.ok) {
+              const customerData = await customerRes.json();
+              userData.firstName = customerData.firstName;
+              userData.lastName = customerData.lastName;
+              userData.name = `${customerData.firstName} ${customerData.lastName}`;
+              userData.id = customerData.id;
+              userData.address = customerData.address;
+              userData.phone = customerData.phone;
+            }
+          } catch (cErr) {
+            console.warn('Customer profile not found or service down:', cErr);
+          }
+
+          setUser(userData);
           setShowLoginModal(false);
           setLoginEmail('');
           setLoginPassword('');
-          showToast('Logged in successfully!');
+          showToast(`Welcome back, ${userData.name}!`);
           fetchProducts(data.token); // refetch products now that we have token
         } else {
           showToast('Login failed. Please verify your credentials.');
@@ -213,9 +237,66 @@ function App() {
     setUser(null);
     setToken(null);
     setCart([]);
-    setShowCartModal(false);
-    setProducts(mockProducts); // fallback to mocks on logout
-    showToast('Logged out. Session cleared.');
+    setShowProfileModal(false);
+    setIsEditingProfile(false);
+    showToast('Logged out successfully.');
+  };
+
+  const startEditingProfile = () => {
+    setProfileForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      address: user.address || ''
+    });
+    setIsEditingProfile(true);
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/customers/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...profileForm,
+          email: user.email // keep email same
+        })
+      });
+
+      if (res.ok) {
+        const updatedCustomer = await res.json();
+        const updatedUser = {
+          ...user,
+          firstName: updatedCustomer.firstName,
+          lastName: updatedCustomer.lastName,
+          name: `${updatedCustomer.firstName} ${updatedCustomer.lastName}`,
+          phone: updatedCustomer.phone,
+          address: updatedCustomer.address
+        };
+        setUser(updatedUser);
+        setIsEditingProfile(false);
+        showToast('Profile updated successfully!');
+      } else {
+        showToast('Failed to update profile.');
+      }
+    } catch (err) {
+      showToast('Error updating profile.');
+    }
+  };
+
+  const scrollToSection = (e, sectionId) => {
+    if (e) e.preventDefault();
+    const section = document.getElementById(sectionId);
+    if (section) {
+      window.scrollTo({
+        top: section.offsetTop - 80,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const addToCart = (product) => {
@@ -267,6 +348,7 @@ function App() {
           body: JSON.stringify({
             orderNumber: `${baseOrderNum}-${index}`,
             productId: item.id.toString(),
+            customerId: user.id,
             quantity: 1,
             totalPrice: item.price
           })
@@ -403,8 +485,23 @@ function App() {
   };
 
   useEffect(() => {
-    if (token) fetchProducts();
-  }, [token]);
+    fetchProducts();
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/products/categories');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setAvailableCategories(['All', ...data]);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch categories from service:', err);
+    }
+  };
 
   const categories = ['All', ...new Set(products.map(p => p.category))];
   const filteredProducts = products.filter(p => {
@@ -424,10 +521,10 @@ function App() {
           </a>
           
           <nav className="nav">
-            <a href="#home" className="nav-link">Home</a>
-            <a href="#shop" className="nav-link">Shop</a>
-            <a href="#categories" className="nav-link">Categories</a>
-            <a href="#about" className="nav-link">About</a>
+            <a href="#home" className="nav-link" onClick={(e) => scrollToSection(e, 'home')}>Home</a>
+            <a href="#shop" className="nav-link" onClick={(e) => scrollToSection(e, 'shop')}>Shop</a>
+            <a href="#categories" className="nav-link" onClick={(e) => scrollToSection(e, 'categories')}>Categories</a>
+            <a href="#about" className="nav-link" onClick={(e) => scrollToSection(e, 'about')}>About</a>
           </nav>
           
           <div className="nav-actions">
@@ -440,6 +537,9 @@ function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {user ? (
                 <>
+                  <button className="btn-icon" onClick={() => setShowProfileModal(true)} title="View Profile">
+                    <User size={20} />
+                  </button>
                   <span style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '500' }}>Hi, {user.name}</span>
                   <button className="btn-icon" onClick={handleLogout} title="Logout">
                     <LogOut size={20} />
@@ -489,10 +589,10 @@ function App() {
             <p>Discover hand-picked premium products that elevate your everyday life. Fast shipping, secure payments, and incredible support.</p>
             
             <div className="hero-actions">
-              <button className="btn btn-primary">
+              <button className="btn btn-primary" onClick={(e) => scrollToSection(e, 'shop')}>
                 Shop Now <MoveRight size={18} />
               </button>
-              <button className="btn btn-secondary">
+              <button className="btn btn-secondary" onClick={(e) => scrollToSection(e, 'categories')}>
                 View Collections
               </button>
             </div>
@@ -667,6 +767,86 @@ function App() {
             <button className="btn btn-secondary" style={{ padding: '1rem 2.5rem' }}>
               Load More Products
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories / Collections Section */}
+      <section id="categories" className="categories-section" style={{ padding: '6rem 0', borderTop: '1px solid var(--border-color)' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+            <h2 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Our Collections</h2>
+            <p style={{ color: 'var(--text-tertiary)', maxWidth: '600px', margin: '0 auto' }}>Explore our curated collections designed to match your lifestyle and needs.</p>
+          </div>
+          
+          <div className="category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+            {availableCategories.filter(c => c !== 'All').map((cat, idx) => (
+              <div 
+                key={idx} 
+                className="category-card animate-fade-in" 
+                style={{ 
+                  height: '200px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  background: `linear-gradient(${135 + idx * 45}deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))`,
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  scrollToSection(null, 'shop');
+                }}
+              >
+                <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '50%', marginBottom: '1rem' }}>
+                  <ShoppingBag size={32} />
+                </div>
+                <h3 style={{ color: '#fff', fontSize: '1.5rem', margin: 0 }}>{cat}</h3>
+                <p style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', marginTop: '0.5rem' }}>View Collection</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="about-section" style={{ padding: '6rem 0', background: 'var(--bg-tertiary)' }}>
+        <div className="container">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+            <div className="animate-fade-in">
+              <h2 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>About Shopscale Fabric</h2>
+              <p style={{ fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2rem' }}>
+                Shopscale Fabric is more than just an e-commerce platform. We are a technology-first marketplace built on a high-performance microservices architecture, ensuring your shopping experience is fast, secure, and reliable.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                <div>
+                  <h4 style={{ color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Zap size={18} className="text-gradient" /> Innovation
+                  </h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Using the latest tech stacks to provide seamless interactions.</p>
+                </div>
+                <div>
+                  <h4 style={{ color: '#fff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Shield size={18} className="text-gradient" /> Reliability
+                  </h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Distributed systems designed to handle thousands of requests per second.</p>
+                </div>
+              </div>
+            </div>
+            <div className="animate-fade-in delay-200" style={{ position: 'relative' }}>
+               <img 
+                 src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&auto=format&fit=crop" 
+                 alt="Team working" 
+                 style={{ width: '100%', borderRadius: 'var(--radius-lg)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }} 
+               />
+               <div className="glass" style={{ position: 'absolute', top: '-20px', right: '-20px', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+                 <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem' }}>Est. 2026</p>
+                 <p style={{ fontSize: '0.8rem' }}>Revolutionizing Commerce</p>
+               </div>
+            </div>
           </div>
         </div>
       </section>
@@ -958,6 +1138,105 @@ function App() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Profile Modal */}
+      {showProfileModal && user && (
+        <div className="modal-overlay" onClick={() => setShowProfileModal(false)}>
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowProfileModal(false)}>
+              <X size={24} />
+            </button>
+            <h2 style={{ color: '#fff', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <User className="text-gradient" /> Customer Profile
+            </h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                  {user.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 style={{ color: '#fff', margin: 0 }}>{user.name}</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Customer ID: #{user.id || 'N/A'}</p>
+                </div>
+              </div>
+
+              {isEditingProfile ? (
+                <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>First Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={profileForm.firstName} 
+                        onChange={(e) => setProfileForm({...profileForm, firstName: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Last Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={profileForm.lastName} 
+                        onChange={(e) => setProfileForm({...profileForm, lastName: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Phone Number</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      value={profileForm.phone} 
+                      onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Shipping Address</label>
+                    <textarea 
+                      className="form-control" 
+                      value={profileForm.address} 
+                      style={{ minHeight: '80px', resize: 'vertical' }}
+                      onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
+                    <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIsEditingProfile(false)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Full Name</label>
+                      <p style={{ color: '#fff', margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{user.name}</p>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Email Address</label>
+                      <p style={{ color: '#fff', margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{user.email}</p>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Phone</label>
+                      <p style={{ color: '#fff', margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{user.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Shipping Address</label>
+                      <p style={{ color: '#fff', margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{user.address || 'No address provided'}</p>
+                    </div>
+                  </div>
+
+                  <button className="btn btn-secondary" style={{ width: '100%' }} onClick={startEditingProfile}>
+                    Edit Profile
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

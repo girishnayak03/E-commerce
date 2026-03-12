@@ -1,6 +1,9 @@
+C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\model\OrderStatus.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\OrderServiceApplication.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\config\RestTemplateConfig.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\repository\OrderRepository.java
+C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\model\InventoryResponseEvent.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\model\Order.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\controller\OrderController.java
+C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\service\OrderKafkaListener.java
 C:\Users\HP\OneDrive\Desktop\e_commerce\shopscale-fabric\order-service\src\main\java\com\shopscale\order\model\OrderPlacedEvent.java

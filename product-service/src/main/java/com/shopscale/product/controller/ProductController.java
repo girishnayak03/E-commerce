@@ -32,6 +32,20 @@ public class ProductController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/category/{category}")
+    public List<Product> getProductsByCategory(@PathVariable String category) {
+        return productRepository.findByCategory(category);
+    }
+
+    @GetMapping("/categories")
+    public List<String> getAllCategories() {
+        return productRepository.findAll().stream()
+                .map(Product::getCategory)
+                .filter(c -> c != null && !c.isEmpty())
+                .distinct()
+                .toList();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
         if(productRepository.existsById(id)) {

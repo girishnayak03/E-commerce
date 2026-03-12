@@ -1,2 +1,3 @@
+com\shopscale\checkout\config\RestTemplateConfig.class
 com\shopscale\checkout\CheckoutServiceApplication.class
 com\shopscale\checkout\controller\CheckoutServiceController.class

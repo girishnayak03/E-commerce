@@ -50,4 +50,14 @@ public class JwtUtil {
                 .getPayload()
                 .get("role", String.class);
     }
+
+    public String generateToken(String userId, String role) {
+        return Jwts.builder()
+                .subject(userId)
+                .claim("role", role)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 hours
+                .signWith(key)
+                .compact();
+    }
 }
