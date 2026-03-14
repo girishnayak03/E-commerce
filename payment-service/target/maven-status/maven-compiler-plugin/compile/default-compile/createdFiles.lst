@@ -1,0 +1,7 @@
+com\shopscale\payment\PaymentServiceApplication.class
+com\shopscale\payment\service\PaymentService.class
+com\shopscale\payment\controller\PaymentController.class
+com\shopscale\payment\model\PaymentRequest.class
+com\shopscale\payment\model\PaymentResponse.class
+com\shopscale\payment\model\Payment.class
+com\shopscale\payment\repository\PaymentRepository.class

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, User, Star, Zap, Shield, Truck, MoveRight, Heart, ShoppingBag, LogOut, CheckCircle, X } from 'lucide-react';
+import { ShoppingCart, Search, User, Star, Zap, Shield, Truck, MoveRight, Heart, ShoppingBag, LogOut, CheckCircle, X, BarChart3, TrendingUp, DollarSign, Package } from 'lucide-react';
 import './App.css';
 
 const mockProducts = [
@@ -150,6 +150,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [showCartModal, setShowCartModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -172,6 +173,55 @@ function App() {
   const [productReviews, setProductReviews] = useState([]);
   const [newReviewComment, setNewReviewComment] = useState('');
   const [newReviewRating, setNewReviewRating] = useState(5);
+
+  const [dashboardData, setDashboardData] = useState({
+    totalRevenue: 0,
+    productsSold: 0,
+    activeUsers: 0,
+    orders: [],
+    payments: []
+  });
+
+  const fetchDashboardData = async () => {
+    try {
+      let userCount = 0;
+      let orderList = [];
+      let totalProducts = 0;
+      let payList = [];
+      let revenue = 0;
+
+      // Users
+      const curUserRes = await fetch('/api/customers');
+      if (curUserRes.ok) {
+        const users = await curUserRes.json();
+        userCount = users.length;
+      }
+      
+      // Orders
+      const curOrderRes = await fetch('/api/orders');
+      if (curOrderRes.ok) {
+        orderList = await curOrderRes.json();
+        totalProducts = orderList.reduce((sum, o) => sum + (o.quantity || 1), 0);
+      }
+      
+      // Payments
+      const curPayRes = await fetch('/api/payments');
+      if (curPayRes.ok) {
+        payList = await curPayRes.json();
+        revenue = payList.reduce((sum, p) => sum + (p.amount || 0), 0);
+      }
+      
+      setDashboardData({
+        totalRevenue: revenue,
+        productsSold: totalProducts,
+        activeUsers: userCount,
+        orders: orderList.reverse().slice(0, 10),
+        payments: payList.reverse().slice(0, 10)
+      });
+    } catch (e) {
+      console.warn("Could not fetch dashboard data", e);
+    }
+  };
 
   // Check localStorage for token on load
   useEffect(() => {
@@ -319,6 +369,25 @@ function App() {
     // Call backend order microservice first to reserve
     try {
       const baseOrderNum = `ORD-${Date.now()}`;
+      const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
+      
+      // Attempt Payment
+      const paymentRes = await fetch('/api/payments/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orderId: baseOrderNum,
+          amount: totalAmount,
+          paymentMethod: 'CREDIT_CARD',
+          currency: 'USD'
+        })
+      });
+
+      if (!paymentRes.ok) throw new Error('Payment processing failed');
+      const paymentData = await paymentRes.json();
       
       // Call Checkout Service to handle the payment simulation and order finalization
       const checkoutRes = await fetch('/api/checkout/process', {
@@ -330,8 +399,9 @@ function App() {
         body: JSON.stringify({
           userId: user.email,
           items: cart,
-          total: cart.reduce((sum, item) => sum + item.price, 0),
-          orderId: baseOrderNum
+          total: totalAmount,
+          orderId: baseOrderNum,
+          paymentTransactionId: paymentData.transactionId
         })
       });
 
@@ -533,6 +603,12 @@ function App() {
             </button>
             <button className="btn-icon" onClick={() => setShowTrackModal(true)} title="Track Order">
               <Truck size={20} />
+            </button>
+            <button className="btn-icon" onClick={() => {
+                setShowDashboardModal(true);
+                fetchDashboardData();
+              }} title="Admin Dashboard">
+              <BarChart3 size={20} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {user ? (
@@ -1236,6 +1312,132 @@ function App() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Dashboard Modal */}
+      {showDashboardModal && (
+        <div className="modal-overlay" onClick={() => setShowDashboardModal(false)}>
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowDashboardModal(false)}>
+              <X size={24} />
+            </button>
+            <h2 style={{ color: '#fff', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <BarChart3 className="text-gradient" /> Product & Sales Dashboard
+            </h2>
+
+            {/* Top Stat Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+              <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)', borderRadius: '50%' }}>
+                  <DollarSign size={24} />
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Total Revenue</p>
+                  <h3 style={{ color: '#fff', margin: 0, fontSize: '1.5rem' }}>${dashboardData.totalRevenue.toFixed(2)}</h3>
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', borderRadius: '50%' }}>
+                  <Package size={24} />
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Products Sold</p>
+                  <h3 style={{ color: '#fff', margin: 0, fontSize: '1.5rem' }}>{dashboardData.productsSold}</h3>
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', color: 'var(--warning)', borderRadius: '50%' }}>
+                  <TrendingUp size={24} />
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>Active Users</p>
+                  <h3 style={{ color: '#fff', margin: 0, fontSize: '1.5rem' }}>{dashboardData.activeUsers}</h3>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
+              
+              {/* Product History Section */}
+              <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Package size={18} className="text-gradient" /> Recent Orders & Product History
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '1rem' }}>Order ID</th>
+                        <th style={{ padding: '1rem' }}>Product ID</th>
+                        <th style={{ padding: '1rem' }}>Qty</th>
+                        <th style={{ padding: '1rem' }}>Total</th>
+                        <th style={{ padding: '1rem' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ color: '#fff', fontSize: '0.9rem' }}>
+                      {dashboardData.orders.length === 0 ? (
+                        <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No orders found</td></tr>
+                      ) : (
+                        dashboardData.orders.map((order, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '1rem' }}>{order.orderNumber}</td>
+                            <td style={{ padding: '1rem' }}>{order.productId}</td>
+                            <td style={{ padding: '1rem' }}>{order.quantity}</td>
+                            <td style={{ padding: '1rem' }}>${order.totalPrice?.toFixed(2)}</td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)', borderRadius: '4px', fontSize: '0.8rem' }}>
+                                {order.orderStatus || 'PENDING'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Payment History Section */}
+              <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <DollarSign size={18} className="text-gradient" /> Payment Transactions
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '1rem' }}>Transaction ID</th>
+                        <th style={{ padding: '1rem' }}>Date</th>
+                        <th style={{ padding: '1rem' }}>Method</th>
+                        <th style={{ padding: '1rem' }}>Amount</th>
+                        <th style={{ padding: '1rem' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ color: '#fff', fontSize: '0.9rem' }}>
+                      {dashboardData.payments.length === 0 ? (
+                        <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No payments found</td></tr>
+                      ) : (
+                        dashboardData.payments.map((payment, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '1rem', fontFamily: 'monospace', color: 'var(--accent-primary)' }}>{payment.transactionId}</td>
+                            <td style={{ padding: '1rem' }}>{new Date(payment.timestamp).toLocaleString()}</td>
+                            <td style={{ padding: '1rem' }}>{payment.paymentMethod}</td>
+                            <td style={{ padding: '1rem' }}>${payment.amount?.toFixed(2)}</td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{ color: payment.status === 'SUCCESS' ? 'var(--success)' : 'var(--warning)' }}>
+                                {payment.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
