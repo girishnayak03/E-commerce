@@ -13,9 +13,15 @@ import com.shopscale.order.model.OrderPlacedEvent;
 import org.springframework.kafka.core.KafkaTemplate;
 import java.util.List;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
+
+    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     @Autowired
     private OrderRepository orderRepository;
@@ -68,7 +74,28 @@ public class OrderController {
                 savedOrder.getProductId(), savedOrder.getQuantity(), savedOrder.getTotalPrice());
         kafkaTemplate.send("order-events", event);
 
+        // Notify all connected clients about the new order for real-time frontend updates
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("new-order").data(savedOrder));
+            } catch (IOException e) {
+                emitters.remove(emitter);
+            }
+        }
+
         return ResponseEntity.ok(savedOrder);
+    }
+
+    @GetMapping("/stream")
+    public SseEmitter streamOrders() {
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE); // Infinite timeout
+        emitters.add(emitter);
+
+        emitter.onCompletion(() -> emitters.remove(emitter));
+        emitter.onTimeout(() -> emitters.remove(emitter));
+        emitter.onError((e) -> emitters.remove(emitter));
+
+        return emitter;
     }
 
     public ResponseEntity<?> fallbackCreateOrder(Order order, Throwable t) {

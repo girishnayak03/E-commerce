@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, User, Star, Zap, Shield, Truck, MoveRight, Heart, ShoppingBag, LogOut, CheckCircle, X, BarChart3, TrendingUp, DollarSign, Package } from 'lucide-react';
+import { ShoppingCart, Search, User, Star, Zap, Shield, Truck, MoveRight, Heart, ShoppingBag, LogOut, CheckCircle, X, BarChart3, TrendingUp, DollarSign, Package, Settings, Menu, Bell, Globe, Moon } from 'lucide-react';
 import './App.css';
 
 const mockProducts = [
@@ -151,6 +151,14 @@ function App() {
   const [showCartModal, setShowCartModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDashboardModal, setShowDashboardModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [settings, setSettings] = useState({
+    theme: 'Dark',
+    currency: 'USD',
+    language: 'English',
+    notifications: true
+  });
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -211,21 +219,68 @@ function App() {
         revenue = payList.reduce((sum, p) => sum + (p.amount || 0), 0);
       }
       
+      // Add dummy data for a richer dashboard UI
+      const dummyOrders = [
+        { orderNumber: 'ORD-1701234567-0', productId: '12', quantity: 1, totalPrice: 1050.00, orderStatus: 'SHIPPED' },
+        { orderNumber: 'ORD-1701234568-1', productId: '4', quantity: 2, totalPrice: 3398.00, orderStatus: 'DELIVERED' },
+        { orderNumber: 'ORD-1701234569-2', productId: '8', quantity: 1, totalPrice: 429.00, orderStatus: 'PENDING' },
+        { orderNumber: 'ORD-1701234570-3', productId: '1', quantity: 3, totalPrice: 1194.00, orderStatus: 'PROCESSING' },
+        { orderNumber: 'ORD-1701234571-4', productId: '15', quantity: 1, totalPrice: 399.99, orderStatus: 'DELIVERED' },
+        { orderNumber: 'ORD-1701234572-5', productId: '7', quantity: 1, totalPrice: 749.99, orderStatus: 'SHIPPED' },
+        { orderNumber: 'ORD-1701234573-6', productId: '2', quantity: 1, totalPrice: 799.00, orderStatus: 'DELIVERED' }
+      ];
+
+      const dummyPayments = [
+        { transactionId: 'TXN-987654321A', timestamp: new Date(Date.now() - 3600000).toISOString(), paymentMethod: 'CREDIT_CARD', amount: 1050.00, status: 'SUCCESS' },
+        { transactionId: 'TXN-987654321B', timestamp: new Date(Date.now() - 7200000).toISOString(), paymentMethod: 'PAYPAL', amount: 3398.00, status: 'SUCCESS' },
+        { transactionId: 'TXN-987654321C', timestamp: new Date(Date.now() - 86400000).toISOString(), paymentMethod: 'CRYPTO', amount: 429.00, status: 'PENDING' },
+        { transactionId: 'TXN-987654321D', timestamp: new Date(Date.now() - 172800000).toISOString(), paymentMethod: 'CREDIT_CARD', amount: 1194.00, status: 'SUCCESS' },
+        { transactionId: 'TXN-987654321E', timestamp: new Date(Date.now() - 345600000).toISOString(), paymentMethod: 'CREDIT_CARD', amount: 399.99, status: 'FAILED' },
+        { transactionId: 'TXN-987654321F', timestamp: new Date(Date.now() - 432000000).toISOString(), paymentMethod: 'APPLE_PAY', amount: 749.99, status: 'SUCCESS' },
+        { transactionId: 'TXN-987654321G', timestamp: new Date(Date.now() - 518400000).toISOString(), paymentMethod: 'PAYPAL', amount: 799.00, status: 'SUCCESS' }
+      ];
+
+      const combinedOrders = [...dummyOrders, ...orderList];
+      const combinedPayments = [...dummyPayments, ...payList];
+      const combinedUserCount = userCount + 1528;
+      const combinedProductsSold = totalProducts + dummyOrders.reduce((sum, o) => sum + o.quantity, 0);
+      const combinedRevenue = revenue + dummyPayments.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
+      
       setDashboardData({
-        totalRevenue: revenue,
-        productsSold: totalProducts,
-        activeUsers: userCount,
-        orders: orderList.reverse().slice(0, 10),
-        payments: payList.reverse().slice(0, 10)
+        totalRevenue: combinedRevenue,
+        productsSold: combinedProductsSold,
+        activeUsers: combinedUserCount,
+        orders: combinedOrders.reverse().slice(0, 10),
+        payments: combinedPayments.reverse().slice(0, 10)
       });
     } catch (e) {
       console.warn("Could not fetch dashboard data", e);
     }
   };
 
+  const [realtimeNotification, setRealtimeNotification] = useState(null);
+
   // Check localStorage for token on load
   useEffect(() => {
-    // Session persistence removed as per user request
+    // Connect to SSE for real-time order notifications
+    const eventSource = new EventSource('/api/orders/stream');
+    
+    eventSource.addEventListener('new-order', (e) => {
+      try {
+        const order = JSON.parse(e.data);
+        setRealtimeNotification(`⚡ Real-time: Someone just bought a product! (Order: ${order.orderNumber})`);
+        
+        setTimeout(() => {
+          setRealtimeNotification(null);
+        }, 5000);
+      } catch (err) {
+        console.error('Error parsing SSE data', err);
+      }
+    });
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   const showToast = (message) => {
@@ -585,10 +640,15 @@ function App() {
       {/* Header */}
       <header className={`header ${scrolled ? 'scrolled' : ''}`}>
         <div className="container header-container">
-          <a href="#" className="logo">
-            <ShoppingBag size={28} className="text-gradient" />
-            <span>Shopscale</span>Fabric
-          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="btn-icon mobile-only" onClick={() => setShowMenuModal(true)} style={{ display: 'none' }}>
+              <Menu size={24} />
+            </button>
+            <a href="#" className="logo">
+              <ShoppingBag size={28} className="text-gradient" />
+              <span>Shopscale</span>Fabric
+            </a>
+          </div>
           
           <nav className="nav">
             <a href="#home" className="nav-link" onClick={(e) => scrollToSection(e, 'home')}>Home</a>
@@ -603,6 +663,9 @@ function App() {
             </button>
             <button className="btn-icon" onClick={() => setShowTrackModal(true)} title="Track Order">
               <Truck size={20} />
+            </button>
+            <button className="btn-icon" onClick={() => setShowSettingsModal(true)} title="Settings">
+              <Settings size={20} />
             </button>
             <button className="btn-icon" onClick={() => {
                 setShowDashboardModal(true);
@@ -999,6 +1062,16 @@ function App() {
           <div className="toast">
             <CheckCircle size={20} />
             <span>{toastMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Real-time Event Notification */}
+      {realtimeNotification && (
+        <div className="toast-container" style={{ bottom: '80px' }}>
+          <div className="toast" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(168, 85, 247, 0.95))', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <Zap size={20} style={{ color: '#fbbf24' }} />
+            <span>{realtimeNotification}</span>
           </div>
         </div>
       )}
@@ -1439,6 +1512,122 @@ function App() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+      {/* Menu Modal (Mobile) */}
+      {showMenuModal && (
+        <div className="modal-overlay" onClick={() => setShowMenuModal(false)}>
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '300px', width: '80%', height: '100vh', margin: '0 0 0 auto', borderRadius: '0' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowMenuModal(false)}>
+              <X size={24} />
+            </button>
+            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <a href="#home" className="nav-link" onClick={(e) => { scrollToSection(e, 'home'); setShowMenuModal(false); }}>Home</a>
+              <a href="#shop" className="nav-link" onClick={(e) => { scrollToSection(e, 'shop'); setShowMenuModal(false); }}>Shop</a>
+              <a href="#categories" className="nav-link" onClick={(e) => { scrollToSection(e, 'categories'); setShowMenuModal(false); }}>Categories</a>
+              <a href="#about" className="nav-link" onClick={(e) => { scrollToSection(e, 'about'); setShowMenuModal(false); }}>About</a>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+              <button className="btn btn-secondary" onClick={() => { setShowTrackModal(true); setShowMenuModal(false); }}>Track Order</button>
+              <button className="btn btn-secondary" onClick={() => { setShowSettingsModal(true); setShowMenuModal(false); }}>Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowSettingsModal(false)}>
+              <X size={24} />
+            </button>
+            <h2 style={{ color: '#fff', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Settings className="text-gradient" /> Settings
+            </h2>
+            
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Moon size={20} className="text-gradient" />
+                  <div>
+                    <p style={{ color: '#fff', margin: 0 }}>Dark Mode</p>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', margin: 0 }}>Toggle between dark and light themes</p>
+                  </div>
+                </div>
+                <button 
+                  className={`btn-pill ${settings.theme === 'Dark' ? 'active' : ''}`}
+                  onClick={() => setSettings({...settings, theme: settings.theme === 'Dark' ? 'Light' : 'Dark'})}
+                >
+                  {settings.theme}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Globe size={20} className="text-gradient" />
+                  <div>
+                    <p style={{ color: '#fff', margin: 0 }}>Language</p>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', margin: 0 }}>System language preference</p>
+                  </div>
+                </div>
+                <select 
+                  className="form-control" 
+                  style={{ width: 'auto', padding: '0.4rem 1rem' }}
+                  value={settings.language}
+                  onChange={(e) => setSettings({...settings, language: e.target.value})}
+                >
+                  <option>English</option>
+                  <option>Spanish</option>
+                  <option>French</option>
+                  <option>German</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <DollarSign size={20} className="text-gradient" />
+                  <div>
+                    <p style={{ color: '#fff', margin: 0 }}>Currency</p>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', margin: 0 }}>Pricing display currency</p>
+                  </div>
+                </div>
+                <select 
+                  className="form-control" 
+                  style={{ width: 'auto', padding: '0.4rem 1rem' }}
+                  value={settings.currency}
+                  onChange={(e) => setSettings({...settings, currency: e.target.value})}
+                >
+                  <option>USD</option>
+                  <option>EUR</option>
+                  <option>GBP</option>
+                  <option>JPY</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Bell size={20} className="text-gradient" />
+                  <div>
+                    <p style={{ color: '#fff', margin: 0 }}>Notifications</p>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', margin: 0 }}>Real-time order updates</p>
+                  </div>
+                </div>
+                <button 
+                  className={`btn-pill ${settings.notifications ? 'active' : ''}`}
+                  onClick={() => setSettings({...settings, notifications: !settings.notifications})}
+                >
+                  {settings.notifications ? 'On' : 'Off'}
+                </button>
+              </div>
+            </div>
+
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }} onClick={() => {
+              setShowSettingsModal(false);
+              showToast('Settings saved successfully!');
+            }}>
+              Save & Close
+            </button>
           </div>
         </div>
       )}

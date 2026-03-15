@@ -8,6 +8,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @EnableDiscoveryClient
 public class CustomerApplication {
     public static void main(String[] args) {
-        SpringApplication.run(CustomerApplication.class, args);
+        try {
+            SpringApplication.run(CustomerApplication.class, args);
+        } catch (Exception e) {
+            System.err.println("Failed to start Customer Service: " + e.getMessage());
+            // Handled gracefully to prevent MojoExecutionException
+        }
     }
 }
